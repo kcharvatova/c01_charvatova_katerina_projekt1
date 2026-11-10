@@ -8,7 +8,6 @@ import rasterize.PolygonRasterizer;
 import view.Panel;
 import model.Line;
 
-import javax.swing.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -29,13 +28,8 @@ public class Controller2D {
     private Point2D start; //misto kliknuti
 
     private boolean polygonMode=false; //true=kreslime polygon
-    private boolean editMode=false; //true=editujeme
 
     private int insertIndex; //index, na ktery se v seznamu vlozi novy vrchol
-    private int editedIndex=-1; //vrchol, ktery prave upravujeme (-1=zadny)
-
-    private boolean editedLineStart;
-    private int editedLine=-1;
 
     public Controller2D(Panel panel) {
         this.panel = panel;
@@ -57,36 +51,12 @@ public class Controller2D {
                 if (polygonMode) {
                     insertIndex = polygon.getSize();
                 }
-                //mazani nejblizsiho bodu v editacnim modu
-                if (editMode) {
-                    if (SwingUtilities.isRightMouseButton(e)) {
-                        findClosestPoint(start);
-                        if (e.isShiftDown()) {
-                            deleteEditedPoint();
-                            drawScene(polygon);
-                        }
-                    }
-                }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 Point2D end = new Point2D(e.getX(), e.getY());
-
-                if (editMode && SwingUtilities.isRightMouseButton(e)) {
-                    //nova poloha upravovaneho bodu
-                    if (editedIndex != -1) {
-                        polygon.setPoint(editedIndex, end);
-                    }
-                    //nova poloha konce upravovane usecky
-                    else if(editedLine!=-1){
-                        moveEditedPoint(end);
-                    }
-                    editedIndex = -1;
-                    editedLine=-1;
-                }
-                //novy vrchol polygonu
-                else if (polygonMode) {
+                if (polygonMode) {
                     polygon.addPoint(insertIndex, end);
                 }
                 else {
@@ -101,17 +71,7 @@ public class Controller2D {
             public void mouseDragged(MouseEvent e) {
                 Point2D cursor = new Point2D(e.getX(), e.getY());
 
-                if (editMode && SwingUtilities.isRightMouseButton(e)) {
-                    //polygon s presouvanym vrcholem na pozici kurzoru
-                    if (editedIndex != -1) {
-                        drawScene(polygon.withEditedPoint(editedIndex, cursor));
-                    }
-                    else if(editedLine!=-1){
-                        moveEditedPoint(cursor);
-                        drawScene(polygon);
-                    }
-                }
-                else if (polygonMode) {
+                if (polygonMode) {
                     drawPolygonPreview(cursor);
                 }
                 else {
@@ -120,21 +80,15 @@ public class Controller2D {
             }
         });
 
-        //meneni modu (L:usecky, P:polygon, E=editace, C=vse smazat)
+        //meneni modu (L:usecky, P:polygon, C:vse smazat)
         panel.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_L){
                     polygonMode = false;
-                    editMode=false;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_P){
                     polygonMode = true;
-                    editMode=false;
-                }
-                if(e.getKeyCode()==KeyEvent.VK_E){
-                    polygonMode=true;
-                    editMode=true;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_C) {
                     lines.clear();
@@ -177,63 +131,4 @@ public class Controller2D {
         }
     }
 
-    //odvozeno z pythagorovy vety
-    private double distance(Point2D a, Point2D b) {
-        return Math.hypot(a.getX() - b.getX(), a.getY() - b.getY());
-    }
-
-    private void findClosestPoint(Point2D target) {
-        editedIndex = -1;
-        editedLine = -1;
-        double best = Double.MAX_VALUE; //dosud nejmensi nalezena vzddalenost
-
-        //najde nejblizsi vrchol polygonu
-        int polygonIndex = polygon.getClosestPointIndex(target);
-        if (polygonIndex != -1) {
-            best = distance(polygon.getPoint(polygonIndex), target);
-            editedIndex = polygonIndex;
-        }
-
-        //projde vsechny vrcholy lines a porovna znovu jejich vzdalenost ke kurzoru
-        for (int i = 0; i < lines.size(); i++) {
-            Line line = lines.get(i);
-
-            double distanceToStart = distance(line.getStart(), target);
-            if (distanceToStart < best) {
-                best = distanceToStart;
-                editedIndex = -1; //polygon se neupravuje
-                editedLine = i;
-                editedLineStart = true; //upravuje se zacatek usecky
-            }
-
-            double distanceToEnd = distance(line.getEnd(), target);
-            if (distanceToEnd < best) {
-                best = distanceToEnd;
-                editedIndex = -1; //polygon se neupravuje
-                editedLine = i;
-                editedLineStart = false; //upravuje se konec usecky
-            }
-        }
-    }
-
-    private void deleteEditedPoint() {
-        if (editedIndex != -1) {
-            polygon.removePoint(editedIndex);
-        } else if (editedLine != -1) {
-            lines.remove(editedLine);   // maze se cela
-        }
-        editedIndex = -1;
-        editedLine = -1;
-    }
-
-    private void moveEditedPoint(Point2D newPosition) {
-        if (editedLine != -1) {
-            Line line = lines.get(editedLine);
-            if (editedLineStart) {
-                lines.set(editedLine, line.withStart(newPosition));
-            } else {
-                lines.set(editedLine, line.withEnd(newPosition));
-            }
-        }
-    }
 }

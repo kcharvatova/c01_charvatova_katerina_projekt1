@@ -5,7 +5,7 @@ import model.Line;
 
 public abstract class LineRasterizer {
     protected Raster raster;
-
+    protected int color=0xff97ca;
     public LineRasterizer(Raster raster) {
         this.raster = raster;
     }

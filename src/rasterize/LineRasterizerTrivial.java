@@ -15,6 +15,10 @@ public class LineRasterizerTrivial extends LineRasterizer {
         int deltaX=x2-x1;
         int deltaY=y2-y1;
 
+        if (deltaX == 0 && deltaY==0){
+            raster.setPixel(x1, y1, color);
+        }
+
         //podle toho, ktera zmena je vetsi, se vybira ridici usecka
         if (Math.abs(deltaX) >= Math.abs(deltaY)) {
             //kontrola a pripadne prohozeni, ktere zajistuje, ze v promenne x1 se nachazi mensi cislo (a s nim i prohozeni y)
@@ -34,7 +38,7 @@ public class LineRasterizerTrivial extends LineRasterizer {
             //trivialni algoritmus
             for (int x = x1; x <= x2; x++) {
                 int y = Math.round(k * x + q);
-                raster.setPixel(x, y, 0xff0000);
+                raster.setPixel(x, y, color);
             }
         } else {
             //kontrola a pripadne prohozeni, ktere zajistuje, ze v promenne y1 se nachazi mensi cislo (a s nim i prohozeni x)
@@ -55,7 +59,7 @@ public class LineRasterizerTrivial extends LineRasterizer {
             //trivialni algoritmus
             for (int y = y1; y <= y2; y++) {
                 int x = Math.round(k * y + q);
-                raster.setPixel(x, y, 0xff0000);
+                raster.setPixel(x, y, color);
             }
         }
     }

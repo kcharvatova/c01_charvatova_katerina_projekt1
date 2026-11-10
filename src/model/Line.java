@@ -18,13 +18,4 @@ public class Line {
         return end;
     }
 
-    //metoda pro vytvoreni nove usecky, pokud menime pri modu edit zacatek existujici, da ji novy zacatek a puvodni konec
-    public Line withStart(Point2D newStart) {
-        return new Line(newStart, end);
-    }
-
-    //metoda pro vytvoreni nove usecky, pokud menime pri modu edit konec existujici, da ji novy konec a puvodni zacatek
-    public Line withEnd(Point2D newEnd) {
-        return new Line(start, newEnd);
-    }
 }
