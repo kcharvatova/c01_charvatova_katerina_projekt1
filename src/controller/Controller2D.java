@@ -28,7 +28,7 @@ public class Controller2D {
     private Point2D start; //misto kliknuti
 
     private boolean polygonMode=false; //true=kreslime polygon
-
+    private boolean automaticLines = false;
     private int insertIndex; //index, na ktery se v seznamu vlozi novy vrchol
 
     public Controller2D(Panel panel) {
@@ -60,7 +60,11 @@ public class Controller2D {
                     polygon.addPoint(insertIndex, end);
                 }
                 else {
-                    lines.add(new Line(start, end));
+                    Line line = new Line (start, end);
+                    if (automaticLines){
+                        line = line.automaticPosition();
+                    }
+                    lines.add(line);
                 }
                 drawScene(polygon);
             }
@@ -75,7 +79,11 @@ public class Controller2D {
                     drawPolygonPreview(cursor);
                 }
                 else {
-                    drawScene(polygon, new Line(start, cursor));
+                    Line preview = new Line (start, cursor);
+                    if (automaticLines){
+                        preview = preview.automaticPosition();
+                    }
+                    drawScene(polygon, preview);
                 }
             }
         });
@@ -86,9 +94,16 @@ public class Controller2D {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_L){
                     polygonMode = false;
+                    automaticLines = false;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_P){
                     polygonMode = true;
+                    automaticLines = false;
+                }
+
+                if (e.getKeyCode() == KeyEvent.VK_SHIFT){
+                    polygonMode = false;
+                    automaticLines = true;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_C) {
                     lines.clear();
