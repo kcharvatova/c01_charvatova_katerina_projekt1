@@ -17,4 +17,13 @@ public abstract class LineRasterizer {
         rasterize(line.getStart().getX(), line.getStart().getY(), line.getEnd().getX(), line.getEnd().getY());
     }
 
+    public int getColor(){
+        return color;
+    }
+
+    public void setColor(int color){
+        this.color = color;
+    }
+
+
 }

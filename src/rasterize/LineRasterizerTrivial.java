@@ -17,6 +17,7 @@ public class LineRasterizerTrivial extends LineRasterizer {
 
         if (deltaX == 0 && deltaY==0){
             raster.setPixel(x1, y1, color);
+            return;
         }
 
         //podle toho, ktera zmena je vetsi, se vybira ridici usecka

@@ -7,6 +7,7 @@ import rasterize.LineRasterizerTrivial;
 import rasterize.PolygonRasterizer;
 import view.Panel;
 import model.Line;
+import fill.SeedFiller;
 
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -20,7 +21,11 @@ public class Controller2D {
 
     // Rasterizers
     private LineRasterizer lineRasterizer;
+    private LineRasterizer polygonLineRasterizer;
     private PolygonRasterizer polygonRasterizer;
+
+    //Fillers
+    private SeedFiller seedFiller;
 
     private Polygon polygon;
     private final List<Line> lines=new ArrayList<>();
@@ -29,14 +34,20 @@ public class Controller2D {
 
     private boolean polygonMode=false; //true=kreslime polygon
     private boolean automaticLines = false;
+    private boolean seedFillMode = false;
     private int insertIndex; //index, na ktery se v seznamu vlozi novy vrchol
 
     public Controller2D(Panel panel) {
         this.panel = panel;
 
         lineRasterizer = new LineRasterizerTrivial(panel.getRaster());
-        polygonRasterizer = new PolygonRasterizer(lineRasterizer);
 
+        polygonLineRasterizer = new LineRasterizerTrivial(panel.getRaster());
+        polygonLineRasterizer.setColor(0x00ffff);
+        polygonRasterizer = new PolygonRasterizer(polygonLineRasterizer);
+
+        seedFiller = new SeedFiller(panel.getRaster());
+        seedFiller.setBoundaryColor(polygonLineRasterizer.getColor());
         polygon = new Polygon();
 
         initListeners();
@@ -51,11 +62,20 @@ public class Controller2D {
                 if (polygonMode) {
                     insertIndex = polygon.getSize();
                 }
+
+                if (seedFillMode){
+                    seedFiller.setSeed(new Point2D(e.getX(), e.getY()));
+                }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 Point2D end = new Point2D(e.getX(), e.getY());
+                if (seedFillMode){
+                    drawScene(polygon);
+                    return;
+                }
+
                 if (polygonMode) {
                     polygon.addPoint(insertIndex, end);
                 }
@@ -75,6 +95,9 @@ public class Controller2D {
             public void mouseDragged(MouseEvent e) {
                 Point2D cursor = new Point2D(e.getX(), e.getY());
 
+                if (seedFillMode){
+                    return;
+                }
                 if (polygonMode) {
                     drawPolygonPreview(cursor);
                 }
@@ -88,28 +111,47 @@ public class Controller2D {
             }
         });
 
-        //meneni modu (L:usecky, P:polygon, C:vse smazat)
+        //meneni modu (L:usecky, P:polygon, SHIFT: vodorovna/svisla/uhlopricna usecka,Q: seedfill (omezeny barvou pozadi), W: seedfill (omezeni barvou hranice) C:vse smazat)
         panel.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_L){
                     polygonMode = false;
                     automaticLines = false;
+                    seedFillMode = false;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_P){
                     polygonMode = true;
                     automaticLines = false;
+                    seedFillMode = false;
                 }
 
                 if (e.getKeyCode() == KeyEvent.VK_SHIFT){
                     polygonMode = false;
                     automaticLines = true;
+                    seedFillMode = false;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_C) {
                     lines.clear();
                     polygon.clear();
+                    seedFiller.clearSeed();
                     drawScene(polygon);
+                    seedFillMode = false;
                 }
+                if (e.getKeyCode() == KeyEvent.VK_Q){
+                    seedFillMode = true;
+                    polygonMode = false;
+                    automaticLines = false;
+                    seedFiller.setBoundaryMode(false);
+                }
+                if (e.getKeyCode() == KeyEvent.VK_W){
+                    seedFillMode = true;
+                    polygonMode = false;
+                    automaticLines = false;
+                    seedFiller.setBoundaryMode(true);
+                }
+
+
             }
         });
     }
@@ -128,18 +170,21 @@ public class Controller2D {
             lineRasterizer.rasterize(preview);
         }
 
+        seedFiller.fill();
+
         panel.repaint();
     }
 
     //nahled pri pridavani vrcholu do polygonu
     private void drawPolygonPreview(Point2D cursor){
-        if (polygon.getSize()==0){
-            return;
-        }
 
         //kdyz ma polygon jen jeden bod, vykresli se pouze usecka od tohoto bodu ke kurzoru
-        if (polygon.getSize()==1){
-            drawScene(polygon, new Line(polygon.getPoint(0), cursor));
+        if (polygon.getSize()==0){
+            Polygon temp = new Polygon();
+            temp.addPoint(start);
+            temp.addPoint(cursor);
+            drawScene(temp);
+            return;
         }
         else{
             drawScene(polygon.withNewPoint(insertIndex, cursor));
