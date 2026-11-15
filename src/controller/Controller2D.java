@@ -9,7 +9,7 @@ import rasterize.PolygonRasterizer;
 import view.Panel;
 import model.Line;
 import fill.SeedFiller;
-import fill.ScanLineFiller;
+import clip.PolygonClipper;
 
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -22,15 +22,21 @@ public class Controller2D {
     private final Panel panel;
 
     // Rasterizers
-    private LineRasterizer lineRasterizer;
-    private LineRasterizer polygonLineRasterizer;
+    private LineRasterizer lineRasterizer; //usecky
+    private LineRasterizer polygonLineRasterizer; //polygon
     private PolygonRasterizer polygonRasterizer;
-    private LineRasterizer fillLineRasterizer;
+    private LineRasterizer fillLineRasterizer; //obrys vyplneneho polygonu
     private PolygonRasterizer fillPolygonRasterizer;
+    private LineRasterizer clipLineRasterizer; //obrys orezavaciho polygonu
+    private PolygonRasterizer clipPolygonRasterizer;
 
     //Fillers
     private SeedFiller seedFiller;
     private ScanLineFiller scanLineFiller;
+    private ScanLineFiller clipFiller;
+
+    //Clippers
+    private PolygonClipper polygonClipper;
 
     private Polygon polygon;
     private final List<Line> lines=new ArrayList<>();
@@ -41,8 +47,10 @@ public class Controller2D {
     private boolean automaticLines = false;
     private boolean seedFillMode = false;
     private boolean scanLineFillMode = false;
+    private boolean clipMode = false;
     private int insertIndex; //index, na ktery se v seznamu vlozi novy vrchol
     private final int scanLineFillColor = 0x445650;
+    private final int seedFillColor = 0xf5789a;
 
     public Controller2D(Panel panel) {
         this.panel = panel;
@@ -57,9 +65,17 @@ public class Controller2D {
         fillLineRasterizer.setColor(scanLineFillColor);
         fillPolygonRasterizer = new PolygonRasterizer(fillLineRasterizer);
 
+        clipLineRasterizer = new LineRasterizerTrivial(panel.getRaster());
+        clipLineRasterizer.setColor(0xffffff);
+        clipPolygonRasterizer = new PolygonRasterizer(clipLineRasterizer);
+
         seedFiller = new SeedFiller(panel.getRaster());
         seedFiller.setBoundaryColor(polygonLineRasterizer.getColor());
+        seedFiller.setFillColor(seedFillColor);
         scanLineFiller = new ScanLineFiller(panel.getRaster(), fillPolygonRasterizer, scanLineFillColor);
+        clipFiller = new ScanLineFiller(panel.getRaster(), clipPolygonRasterizer, 0x333366);
+
+        polygonClipper =new PolygonClipper();
 
         polygon = new Polygon();
 
@@ -132,17 +148,26 @@ public class Controller2D {
                     polygonMode = false;
                     automaticLines = false;
                     seedFillMode = false;
+                    scanLineFillMode = false;
+                    clipMode = false;
+                    drawScene(polygon);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_P){
                     polygonMode = true;
                     automaticLines = false;
                     seedFillMode = false;
+                    scanLineFillMode = false;
+                    clipMode = false;
+                    drawScene(polygon);
                 }
 
                 if (e.getKeyCode() == KeyEvent.VK_SHIFT){
-                    polygonMode = false;
                     automaticLines = true;
+                    polygonMode = false;
                     seedFillMode = false;
+                    scanLineFillMode = false;
+                    clipMode = false;
+                    drawScene(polygon);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_C) {
                     lines.clear();
@@ -150,18 +175,23 @@ public class Controller2D {
                     seedFiller.clearSeed();
                     seedFillMode = false;
                     scanLineFillMode = false;
+                    clipMode = false;
                     drawScene(polygon);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_Q){
                     seedFillMode = true;
                     polygonMode = false;
                     automaticLines = false;
+                    scanLineFillMode = false;
+                    clipMode = false;
                     seedFiller.setBoundaryMode(false);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_W){
                     seedFillMode = true;
                     polygonMode = false;
                     automaticLines = false;
+                    scanLineFillMode = false;
+                    clipMode = false;
                     seedFiller.setBoundaryMode(true);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_E){
@@ -169,6 +199,15 @@ public class Controller2D {
                     seedFillMode = false;
                     polygonMode = false;
                     automaticLines = false;
+                    clipMode = false;
+                    drawScene(polygon);
+                }
+                if (e.getKeyCode() == KeyEvent.VK_R){
+                    clipMode = true;
+                    polygonMode = false;
+                    automaticLines = false;
+                    seedFillMode = false;
+                    scanLineFillMode = false;
                     drawScene(polygon);
                 }
 
@@ -183,11 +222,22 @@ public class Controller2D {
         //smaze platno
         panel.getRaster().clear();
 
+        if (clipMode){
+            clipFiller.setPolygon(polygonClipper.getClipPolygon());
+            clipFiller.fill();
+        }
+
         for (Line line : lines) {
             lineRasterizer.rasterize(line);
         }
 
-        if (scanLineFillMode){
+        if (clipMode){
+            for (Line line : polygonClipper.clipOutline(polygonClipper.getClipPolygon(), polygonToDraw)) {
+                polygonLineRasterizer.rasterize(line);
+            }
+        }
+
+        else if (scanLineFillMode){
             scanLineFiller.setPolygon(polygonToDraw);
             scanLineFiller.fill();
         }
