@@ -4,12 +4,9 @@ import model.Edge;
 import model.Point2D;
 import model.Polygon;
 import raster.Raster;
-import rasterize.LineRasterizer;
 import rasterize.PolygonRasterizer;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 public class ScanLineFiller implements Filler{
@@ -69,7 +66,15 @@ public class ScanLineFiller implements Filler{
             }
 
 
-            Collections.sort(intersections);
+            for (int i = 0; i < intersections.size() - 1; i++) {
+                for (int j = 0; j < intersections.size() - 1 - i; j++) {
+                    if (intersections.get(j) > intersections.get(j + 1)) {
+                        int tmp = intersections.get(j);
+                        intersections.set(j, intersections.get(j + 1));
+                        intersections.set(j + 1, tmp);
+                    }
+                }
+            }
 
             for (int i= 0; i+1<intersections.size(); i+=2){
                 for (int x = intersections.get(i); x <= intersections.get(i+1); x++){

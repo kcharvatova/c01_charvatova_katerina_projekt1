@@ -13,11 +13,13 @@ public class PolygonClipper {
     private final Polygon clipPolygon;
 
     public PolygonClipper(){
+        //vychozi orezavaci polygon: pravidelny petiuhelnik se stredem uprostred platna
         clipPolygon = new Polygon();
         int centerX = 400;
         int centerY = 300;
         int radius = 150;
         for (int i = 0; i<5; i++){
+            //vrcholy lezi na kruznici, prvni nahore (-PI/2), ostatni po 72 stupnich
             double angle = 2 * Math.PI * i / 5 - Math.PI / 2;
             int x = (int) Math.round(centerX + radius * Math.cos(angle));
             int y = (int) Math.round(centerY + radius * Math.sin(angle));
@@ -148,6 +150,57 @@ public class PolygonClipper {
 
     public Polygon getClipPolygon(){
         return clipPolygon;
+    }
+
+    //presune vrchol orezavaciho polygonu, jen pokud zustane konvexni
+    public boolean moveClipPoint(int index, Point2D target) {
+        Polygon candidate = clipPolygon.withEditedPoint(index, target);
+        if (!isConvex(candidate)) {
+            return false;
+        }
+        clipPolygon.setPoint(index, target);
+        return true;
+    }
+
+    //obrati poradi vrcholu (zmeni orientaci)
+    public void reverseClipPolygon() {
+        List<Point2D> points = new ArrayList<>();
+        for (int i = 0; i < clipPolygon.getSize(); i++) {
+            points.add(clipPolygon.getPoint(i));
+        }
+        clipPolygon.clear();
+        for (int i = points.size() - 1; i >= 0; i--) {
+            clipPolygon.addPoint(points.get(i));
+        }
+    }
+
+    //polygon je konvexni, pokud vsechny zatacky vedou na stejnou stranu
+    private boolean isConvex(Polygon polygon) {
+        int sign = 0;
+        int n = polygon.getSize();
+        for (int i = 0; i < n; i++) {
+            Point2D a = polygon.getPoint(i);
+            Point2D b = polygon.getPoint((i + 1) % n);
+            Point2D c = polygon.getPoint((i + 2) % n);
+
+            long cross = (long) (b.getX() - a.getX()) * (c.getY() - b.getY())
+                    - (long) (b.getY() - a.getY()) * (c.getX() - b.getX());
+
+            if (cross != 0) {
+                int turn;
+                if (cross > 0) {
+                    turn = 1;
+                } else {
+                    turn = -1;
+                }
+                if (sign == 0) {
+                    sign = turn;
+                } else if (turn != sign) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
 

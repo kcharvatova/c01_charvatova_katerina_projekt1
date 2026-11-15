@@ -18,6 +18,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.SwingUtilities;
 
 public class Controller2D {
     private final Panel panel;
@@ -57,6 +58,7 @@ public class Controller2D {
     private final int scanLineFillColor = 0x445650;
     private final int seedFillColor = 0xf5789a;
     private final int moveStep = 10;
+    private int editedClipIndex = -1;
 
     public Controller2D(Panel panel) {
         this.panel = panel;
@@ -68,7 +70,7 @@ public class Controller2D {
         polygonRasterizer = new PolygonRasterizer(polygonLineRasterizer);
 
         fillLineRasterizer = new LineRasterizerTrivial(panel.getRaster());
-        fillLineRasterizer.setColor(scanLineFillColor);
+        fillLineRasterizer.setColor(0x00ffff);
         fillPolygonRasterizer = new PolygonRasterizer(fillLineRasterizer);
 
         clipLineRasterizer = new LineRasterizerTrivial(panel.getRaster());
@@ -97,6 +99,12 @@ public class Controller2D {
             @Override
             public void mousePressed(MouseEvent e) {
                 start = new Point2D(e.getX(), e.getY());
+
+                if (clipMode && SwingUtilities.isRightMouseButton(e)) {
+                    editedClipIndex = polygonClipper.getClipPolygon().getClosestPointIndex(start);
+                    return;
+                }
+
                 //pridani noveho vrcholu na konec seznamu
                 if (polygonMode) {
                     insertIndex = polygon.getSize();
@@ -109,6 +117,12 @@ public class Controller2D {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (clipMode && SwingUtilities.isRightMouseButton(e)) {
+                    editedClipIndex = -1;
+                    drawScene(polygon);
+                    return;
+                }
+
                 Point2D end = new Point2D(e.getX(), e.getY());
                 if (windowMode) {
                     return;
@@ -137,6 +151,20 @@ public class Controller2D {
             @Override
             public void mouseDragged(MouseEvent e) {
                 Point2D cursor = new Point2D(e.getX(), e.getY());
+
+                if (windowMode) {
+                    lineClipper.setWindow(start.getX(), start.getY(), cursor.getX(), cursor.getY());
+                    drawScene(polygon);
+                    return;
+                }
+
+                if (clipMode && SwingUtilities.isRightMouseButton(e)) {
+                    if (editedClipIndex != -1) {
+                        polygonClipper.moveClipPoint(editedClipIndex, cursor);
+                        drawScene(polygon);
+                    }
+                    return;
+                }
 
                 if (seedFillMode){
                     return;

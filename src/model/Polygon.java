@@ -41,6 +41,37 @@ public class Polygon {
         copy.addPoint(index, point);
         return copy;
     }
+    //nahradi bod na konkretnim indexu jinym bodem,pouziva se pro upravovani polohy jednotlivych vrcholu
+    public void setPoint(int index, Point2D point) {
+        points.set(index, point);
+    }
+    //metoda pouzivana pri editaci polohy bodu v polygonu, aby uzivatel videl, jak bude polygon po uprave vypadat, vraci kopii polygonu puvodniho a nakonec nahradi upravovany bod bodem novym
+    public Polygon withEditedPoint(int index, Point2D point) {
+        Polygon copy = new Polygon();
+        for (Point2D p : points) {
+            copy.addPoint(p);
+        }
+        copy.setPoint(index, point);
+        return copy;
+    }
+
+    //hleda nejblizsi bod od kliknuti a vraci index tohoto bodu
+    public int getClosestPointIndex(Point2D target) {
+        //pokud je polygon prazdny, vraci se -1
+        int best = -1;
+        //nejvyssi hodnota, aby ho hned nahradil prvni bod v cyklu
+        double bestDistance = Double.MAX_VALUE;
+        for (int i = 0; i < points.size(); i++) {
+            Point2D p = points.get(i);
+            //odvozeno z pythagorovy vety
+            double distance = Math.hypot(p.getX() - target.getX(), p.getY() - target.getY());
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = i;
+            }
+        }
+        return best;
+    }
 
     //smaze body ze seznamu
     public void clear(){
