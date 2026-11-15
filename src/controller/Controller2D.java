@@ -10,6 +10,7 @@ import view.Panel;
 import model.Line;
 import fill.SeedFiller;
 import clip.PolygonClipper;
+import clip.LineClipper;
 
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -29,6 +30,7 @@ public class Controller2D {
     private PolygonRasterizer fillPolygonRasterizer;
     private LineRasterizer clipLineRasterizer; //obrys orezavaciho polygonu
     private PolygonRasterizer clipPolygonRasterizer;
+    private LineRasterizer windowRasterizer; //okraj orezavaciho okna
 
     //Fillers
     private SeedFiller seedFiller;
@@ -37,20 +39,24 @@ public class Controller2D {
 
     //Clippers
     private PolygonClipper polygonClipper;
+    private LineClipper lineClipper;
 
     private Polygon polygon;
     private final List<Line> lines=new ArrayList<>();
 
     private Point2D start; //misto kliknuti
-
+    //Modes
     private boolean polygonMode=false; //true=kreslime polygon
     private boolean automaticLines = false;
     private boolean seedFillMode = false;
     private boolean scanLineFillMode = false;
     private boolean clipMode = false;
+    private boolean windowMode;
+
     private int insertIndex; //index, na ktery se v seznamu vlozi novy vrchol
     private final int scanLineFillColor = 0x445650;
     private final int seedFillColor = 0xf5789a;
+    private final int moveStep = 10;
 
     public Controller2D(Panel panel) {
         this.panel = panel;
@@ -68,6 +74,10 @@ public class Controller2D {
         clipLineRasterizer = new LineRasterizerTrivial(panel.getRaster());
         clipLineRasterizer.setColor(0xffffff);
         clipPolygonRasterizer = new PolygonRasterizer(clipLineRasterizer);
+
+        windowRasterizer = new LineRasterizerTrivial(panel.getRaster());
+        windowRasterizer.setColor(0xffffff);
+        lineClipper = new LineClipper(250, 150, 550, 450);
 
         seedFiller = new SeedFiller(panel.getRaster());
         seedFiller.setBoundaryColor(polygonLineRasterizer.getColor());
@@ -100,6 +110,10 @@ public class Controller2D {
             @Override
             public void mouseReleased(MouseEvent e) {
                 Point2D end = new Point2D(e.getX(), e.getY());
+                if (windowMode) {
+                    return;
+                }
+
                 if (seedFillMode){
                     drawScene(polygon);
                     return;
@@ -150,6 +164,7 @@ public class Controller2D {
                     seedFillMode = false;
                     scanLineFillMode = false;
                     clipMode = false;
+                    windowMode = false;
                     drawScene(polygon);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_P){
@@ -158,6 +173,7 @@ public class Controller2D {
                     seedFillMode = false;
                     scanLineFillMode = false;
                     clipMode = false;
+                    windowMode = false;
                     drawScene(polygon);
                 }
 
@@ -167,6 +183,7 @@ public class Controller2D {
                     seedFillMode = false;
                     scanLineFillMode = false;
                     clipMode = false;
+                    windowMode = false;
                     drawScene(polygon);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_C) {
@@ -176,6 +193,7 @@ public class Controller2D {
                     seedFillMode = false;
                     scanLineFillMode = false;
                     clipMode = false;
+                    windowMode = false;
                     drawScene(polygon);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_Q){
@@ -184,6 +202,7 @@ public class Controller2D {
                     automaticLines = false;
                     scanLineFillMode = false;
                     clipMode = false;
+                    windowMode = false;
                     seedFiller.setBoundaryMode(false);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_W){
@@ -192,6 +211,7 @@ public class Controller2D {
                     automaticLines = false;
                     scanLineFillMode = false;
                     clipMode = false;
+                    windowMode = false;
                     seedFiller.setBoundaryMode(true);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_E){
@@ -200,6 +220,7 @@ public class Controller2D {
                     polygonMode = false;
                     automaticLines = false;
                     clipMode = false;
+                    windowMode = false;
                     drawScene(polygon);
                 }
                 if (e.getKeyCode() == KeyEvent.VK_R){
@@ -208,9 +229,38 @@ public class Controller2D {
                     automaticLines = false;
                     seedFillMode = false;
                     scanLineFillMode = false;
+                    windowMode = false;
                     drawScene(polygon);
                 }
 
+                if (e.getKeyCode() == KeyEvent.VK_T){
+                    windowMode = true;
+                    polygonMode = false;
+                    automaticLines = false;
+                    seedFillMode = false;
+                    scanLineFillMode = false;
+                    clipMode = false;
+                    drawScene(polygon);
+                }
+                if (windowMode) {
+                    int dx = 0, dy = 0;
+                    if (e.getKeyCode() == KeyEvent.VK_LEFT)  dx = -moveStep;
+                    if (e.getKeyCode() == KeyEvent.VK_RIGHT) dx = moveStep;
+                    if (e.getKeyCode() == KeyEvent.VK_UP)    dy = -moveStep;
+                    if (e.getKeyCode() == KeyEvent.VK_DOWN)  dy = moveStep;
+                    if (dx != 0 || dy != 0) {
+                        lineClipper.move(dx, dy);
+                        drawScene(polygon);
+                    }
+
+                    if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        List<Line> clipped = lineClipper.clip(lines);
+                        lines.clear();
+                        lines.addAll(clipped);
+                        windowMode = false;
+                        drawScene(polygon);
+                    }
+                }
 
 
 
@@ -229,6 +279,15 @@ public class Controller2D {
 
         for (Line line : lines) {
             lineRasterizer.rasterize(line);
+        }
+
+        if (windowMode) {
+            int x1 = lineClipper.getXMin(), y1 = lineClipper.getYMin();
+            int x2 = lineClipper.getXMax(), y2 = lineClipper.getYMax();
+            windowRasterizer.rasterize(x1, y1, x2, y1);
+            windowRasterizer.rasterize(x2, y1, x2, y2);
+            windowRasterizer.rasterize(x2, y2, x1, y2);
+            windowRasterizer.rasterize(x1, y2, x1, y1);
         }
 
         if (clipMode){
